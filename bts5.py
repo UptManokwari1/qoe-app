@@ -8,6 +8,8 @@ def load_data(file):
     df = pd.read_csv(file)
     return df
 
+st.set_page_config(page_title="QoE SIGMON", page_icon="📊:bar_chart:", layout="wide")
+
 def main():
     st.title("Visualisasi Data QoE SIGMON Operator Seluler")
 
@@ -38,17 +40,20 @@ def main():
         # Parameter yang akan divisualisasikan
         parameter_unik = df['Parameter'].unique().tolist()
         parameter_terpilih = st.selectbox("Pilih Parameter:", parameter_unik)
-
+        
         # Membuat barchart
         st.subheader(f"Grafik {parameter_terpilih} di Lokasi Terpilih")
 
         # Menggabungkan data berdasarkan lokasi dan parameter
         df_plot = df_filtered[df_filtered['Parameter'] == parameter_terpilih].melt(
-            id_vars=['Alamat'],
+            id_vars=['Alamat', 'Tanggal'],
             value_vars=operator_unik,
             var_name='Operator',
             value_name=parameter_terpilih
+                        
         )
+        
+       
 
         # Menentukan operator dengan nilai tertinggi untuk parameter tertentu
         # operator_terbaik = df_plot.loc[df_plot[parameter_terpilih].idxmax(), 'Operator']
