@@ -10,7 +10,7 @@ from google.oauth2.service_account import Credentials
 from gspread_pandas import Spread, Client
 
 # Set page config
-st.set_page_config(page_title="QoE SIGMON", page_icon="📊:bar_chart:", layout="wide")
+st.set_page_config(page_title="QoE SIGMON", page_icon="📊", layout="wide")
 
 # CSS untuk styling
 st.markdown(
@@ -350,31 +350,31 @@ def process_data(df):
             axis=1
         )
     
-    # Filter Bulan
-    bulan_unik = ['Semua'] + sorted(df['Bulan'].unique().tolist())  # Tambahkan "Semua" ke daftar bulan unik yang sudah diurutkan
-    bulan_terpilih = st.selectbox("Pilih Bulan:", bulan_unik, index=0, key="month_select_process_data")
+    # Filter Bulan - PENTING: Menggunakan key unik yang berbeda dari month_select_process_data
+    bulan_unik = ['Semua'] + sorted(df['Bulan'].unique().tolist())
+    bulan_terpilih = st.selectbox("Pilih Bulan:", bulan_unik, index=0, key="process_data_month_select_primary")  # Key yang lebih jelas & unik
     
-    if bulan_terpilih == 'Semua':  # Cek apakah memilih semua bulan
-        df_filtered = df.copy()  # jika dipilih semua bulan maka semua data akan ditampilkan
+    if bulan_terpilih == 'Semua':
+        df_filtered = df.copy()
     else:
         df_filtered = df[df['Bulan'] == bulan_terpilih]
         
     # Filter Kabupaten/Kota
     if 'Kabupaten/Kota' in df.columns:
         kabupaten_unik = sorted(df_filtered['Kabupaten/Kota'].unique().tolist())
-        kabupaten_terpilih = st.multiselect("Pilih Kabupaten/Kota:", kabupaten_unik, default=kabupaten_unik, key="district_multiselect")
+        kabupaten_terpilih = st.multiselect("Pilih Kabupaten/Kota:", kabupaten_unik, default=kabupaten_unik, key="district_multiselect_main")  # Key lebih spesifik
         
-        if kabupaten_terpilih:  # Cek apakah ada kabupaten/kota yang dipilih
+        if kabupaten_terpilih:
             df_filtered = df_filtered[df_filtered['Kabupaten/Kota'].isin(kabupaten_terpilih)]
         else:
-            df_filtered = df_filtered.copy()  # Jika tidak ada yang dipilih, gunakan semua data
+            df_filtered = df_filtered.copy()
     else:
         st.warning("Kolom 'Kabupaten/Kota' tidak ditemukan dalam data.")
         df_filtered = df_filtered.copy()
         
     # Pilih lokasi
     lokasi_unik = sorted(df_filtered['Alamat'].unique().tolist())
-    lokasi_terpilih = st.multiselect("Pilih Lokasi:", lokasi_unik, default=lokasi_unik, key="location_multiselect")
+    lokasi_terpilih = st.multiselect("Pilih Lokasi:", lokasi_unik, default=lokasi_unik, key="location_multiselect_main")  # Key lebih spesifik
            
     # Filter data berdasarkan lokasi yang dipilih
     df_filtered = df_filtered[df_filtered['Alamat'].isin(lokasi_terpilih)]
@@ -396,22 +396,22 @@ def process_data(df):
     parameter_unik_route = sorted(df_route_test['Parameter'].unique().tolist()) if not df_route_test.empty else []
     parameter_terpilih_route = st.sidebar.selectbox("Pilih Parameter Route Test:", 
                                                   parameter_unik_route if parameter_unik_route else ['Tidak ada data'], 
-                                                  key="route_param_select")
+                                                  key="route_param_select_sidebar")  # Key lebih spesifik
     
    # Parameter untuk Static Test
     st.sidebar.subheader("Parameter Static Test")
     parameter_unik_static = sorted(df_static_test['Parameter'].unique().tolist()) if not df_static_test.empty else []
     parameter_terpilih_static = st.sidebar.selectbox("Pilih Parameter Static Test:", 
                                                    parameter_unik_static if parameter_unik_static else ['Tidak ada data'], 
-                                                   key="static_param_select")
+                                                   key="static_param_select_sidebar")  # Key lebih spesifik
     
     # Opsi untuk menampilkan koordinat pada peta
     st.sidebar.subheader("Opsi Peta")
-    show_coordinates = st.sidebar.checkbox("Tampilkan Koordinat pada Peta", value=True, key="show_coords_checkbox")
+    show_coordinates = st.sidebar.checkbox("Tampilkan Koordinat pada Peta", value=True, key="show_coords_checkbox_sidebar")  # Key lebih spesifik
     coordinate_format = st.sidebar.radio("Format Koordinat", 
                                        ["Desimal (DD.DDDDDD)", "Derajat-Menit-Detik (DD°MM'SS\")"], 
                                        index=0, 
-                                       key="coord_format_radio")
+                                       key="coord_format_radio_sidebar")  # Key lebih spesifik
     
     # Update fungsi format koordinat berdasarkan pilihan pengguna
     def get_coordinate_display(lat, lon):
@@ -429,77 +429,123 @@ def process_data(df):
     col1, col2 = st.columns(2)
     
     # --- Fungsi untuk membuat grafik dan menampilkan info kualitas ---
-    def create_barchart(df, parameter, title):
+    def create_barchart(df, parameter, title, col_key_suffix):
         if df.empty or parameter not in df['Parameter'].values:
             st.write(f"Tidak ada data untuk {title}.")
             return None
-           
-        df_plot = df[df['Parameter'] == parameter].melt(
-            id_vars=['Alamat', 'Tanggal', 'Bulan', 'Jenis Pengukuran', 'Parameter', 'Tanggal_str', 
-                    'Latitude', 'Longitude', 'Koordinat', 'Koordinat_DMS'] +
-                    (['Kabupaten/Kota'] if 'Kabupaten/Kota' in df.columns else []),
-            value_vars=[op for op in operator_unik if op in df.columns],
-            var_name='Operator',
-            value_name='Nilai'
-        )
-       
-        if not df_plot.empty:
+        
+        try:
+            # Pastikan parameter merupakan string yang valid
+            parameter_str = str(parameter)
+            df_param = df[df['Parameter'] == parameter]
+            
+            # Melt dataframe dengan penanganan error yang lebih baik
+            id_vars = ['Alamat', 'Tanggal', 'Bulan', 'Jenis Pengukuran', 'Parameter', 'Tanggal_str', 
+                      'Latitude', 'Longitude', 'Koordinat', 'Koordinat_DMS']
+            
+            # Tambahkan 'Kabupaten/Kota' jika ada
+            if 'Kabupaten/Kota' in df.columns:
+                id_vars.append('Kabupaten/Kota')
+            
+            # Filter operator yang tersedia dalam data
+            value_vars = [op for op in operator_unik if op in df.columns]
+            
+            if not value_vars:
+                st.write(f"Tidak ada kolom operator yang valid untuk {title}.")
+                return None
+            
+            # Coba konversi nilai operator ke numerik
+            for op in value_vars:
+                df_param[op] = pd.to_numeric(df_param[op], errors='coerce')
+            
+            # Melt dataframe
+            df_plot = df_param.melt(
+                id_vars=id_vars,
+                value_vars=value_vars,
+                var_name='Operator',
+                value_name='Nilai'
+            )
+            
+            if df_plot.empty:
+                st.write(f"Tidak ada data untuk {title} setelah transformasi.")
+                return None
+            
             # Map warna ke operator
-            color_discrete_map = {op: color_map[op] for op in operator_unik if op in color_map}
-       
-            fig = px.bar(df_plot, x='Alamat', y='Nilai', color='Operator', barmode='group',
-                         title=f"{parameter} ({title})",
-                         hover_data=['Operator', 'Alamat', 'Tanggal_str', 'Nilai', 'Koordinat'],
-                         color_discrete_map=color_discrete_map)
-           
+            color_discrete_map = {op: color_map.get(op, 'gray') for op in value_vars}
+            
+            # Membuat grafik batang
+            fig = px.bar(
+                df_plot, 
+                x='Alamat', 
+                y='Nilai', 
+                color='Operator', 
+                barmode='group',
+                title=f"{parameter_str} ({title})",
+                hover_data=['Operator', 'Alamat', 'Tanggal_str', 'Nilai', 'Koordinat'],
+                color_discrete_map=color_discrete_map
+            )
+            
             # Menyesuaikan tata letak plot
             fig.update_layout(
                 xaxis_title="Lokasi",
-                yaxis_title=parameter,
+                yaxis_title=parameter_str,
                 legend_title="Operator"
             )
-           
+            
+            # Tampilkan grafik
             st.plotly_chart(fig)
-           
-            # Analisis nilai tertinggi dan terendah untuk setiap operator dan lokasi
-            if pd.api.types.is_numeric_dtype(df_plot['Nilai']):
-                # Cari nilai tertinggi dan terendah di seluruh dataset
-                max_row = df_plot.loc[df_plot['Nilai'].idxmax()]
-                min_row = df_plot.loc[df_plot['Nilai'].idxmin()]
+            
+            # Analisis nilai tertinggi dan terendah dengan penanganan error
+            try:
+                # Drop baris dengan nilai NaN
+                df_plot_clean = df_plot.dropna(subset=['Nilai'])
                 
-                # Tampilkan informasi tentang operator dan lokasi dengan nilai tertinggi dan terendah
-                st.markdown(f"**Nilai {parameter} Tertinggi:** {max_row['Operator']} di lokasi {max_row['Alamat']} ({max_row['Nilai']:.2f})")
-                
-                # Tampilkan koordinat berdasarkan format yang dipilih
-                if coordinate_format == "Desimal (DD.DDDDDD)":
-                    st.markdown(f"**Koordinat:** {max_row['Koordinat']}")
+                if not df_plot_clean.empty:
+                    # Cari nilai tertinggi dan terendah
+                    max_idx = df_plot_clean['Nilai'].idxmax()
+                    min_idx = df_plot_clean['Nilai'].idxmin()
+                    
+                    if max_idx is not None and min_idx is not None:
+                        max_row = df_plot_clean.loc[max_idx]
+                        min_row = df_plot_clean.loc[min_idx]
+                        
+                        # Tampilkan informasi tentang operator dan lokasi dengan nilai tertinggi dan terendah
+                        st.markdown(f"**Nilai {parameter_str} Tertinggi:** {max_row['Operator']} di lokasi {max_row['Alamat']} ({max_row['Nilai']:.2f})")
+                        
+                        # Tampilkan koordinat berdasarkan format yang dipilih
+                        if coordinate_format == "Desimal (DD.DDDDDD)":
+                            st.markdown(f"**Koordinat:** {max_row['Koordinat']}")
+                        else:
+                            st.markdown(f"**Koordinat:** {max_row['Koordinat_DMS']}")
+                        
+                        st.markdown(f"**Nilai {parameter_str} Terendah:** {min_row['Operator']} di lokasi {min_row['Alamat']} ({min_row['Nilai']:.2f})")
+                        
+                        # Tampilkan koordinat berdasarkan format yang dipilih
+                        if coordinate_format == "Desimal (DD.DDDDDD)":
+                            st.markdown(f"**Koordinat:** {min_row['Koordinat']}")
+                        else:
+                            st.markdown(f"**Koordinat:** {min_row['Koordinat_DMS']}")
+                    else:
+                        st.info(f"Tidak dapat menentukan nilai tertinggi dan terendah karena tidak ada indeks yang valid.")
                 else:
-                    st.markdown(f"**Koordinat:** {max_row['Koordinat_DMS']}")
-                
-                st.markdown(f"**Nilai {parameter} Terendah:** {min_row['Operator']} di lokasi {min_row['Alamat']} ({min_row['Nilai']:.2f})")
-                
-                # Tampilkan koordinat berdasarkan format yang dipilih
-                if coordinate_format == "Desimal (DD.DDDDDD)":
-                    st.markdown(f"**Koordinat:** {min_row['Koordinat']}")
-                else:
-                    st.markdown(f"**Koordinat:** {min_row['Koordinat_DMS']}")
-            else:
-                st.write(f"Nilai tertinggi dan terendah tidak dapat ditentukan karena parameter bukan data numerik.")                
-           
+                    st.info(f"Tidak dapat menentukan nilai tertinggi dan terendah karena tidak ada data numerik yang valid.")
+            except Exception as e:
+                st.info(f"Nilai tertinggi dan terendah tidak dapat ditentukan: {str(e)}")
+            
             return df_plot
-        else:
-            st.write(f"Tidak ada data untuk {title}.")
+        except Exception as e:
+            st.error(f"Error saat membuat grafik {title}: {str(e)}")
             return None
             
     # --- Membuat grafik Route Test ---
     with col1:
         st.subheader(f"Grafik {parameter_terpilih_route} (Route Test)")
-        df_plot_route = create_barchart(df_route_test, parameter_terpilih_route, "Route Test")
+        df_plot_route = create_barchart(df_route_test, parameter_terpilih_route, "Route Test", "route")
         
     # --- Membuat grafik Static Test ---
     with col2:
         st.subheader(f"Grafik {parameter_terpilih_static} (Static Test)")
-        df_plot_static = create_barchart(df_static_test, parameter_terpilih_static, "Static Test")
+        df_plot_static = create_barchart(df_static_test, parameter_terpilih_static, "Static Test", "static")
     
     # ----- PETA GABUNGAN UNTUK ROUTE TEST DAN STATIC TEST -----
     st.subheader("Peta Lokasi QoE SIGMON (Route Test & Static Test)")
@@ -636,6 +682,9 @@ def process_data(df):
         # Tambahkan marker untuk Route Test dengan animasi
         if has_route_data:
             for op in [op for op in operator_unik if op in df_route_map.columns]:
+                # Konversi ke nilai numerik
+                df_route_map[op] = pd.to_numeric(df_route_map[op], errors='coerce')
+                
                 # Filter data untuk operator ini yang tidak null
                 op_data = df_route_map.copy()
                 op_data = op_data[op_data[op].notna()]
@@ -673,6 +722,9 @@ def process_data(df):
         # Tambahkan marker untuk Static Test dengan animasi
         if has_static_data:
             for op in [op for op in operator_unik if op in df_static_map.columns]:
+                # Konversi ke nilai numerik
+                df_static_map[op] = pd.to_numeric(df_static_map[op], errors='coerce')
+                
                 # Filter data untuk operator ini yang tidak null
                 op_data = df_static_map.copy()
                 op_data = op_data[op_data[op].notna()]
@@ -746,65 +798,79 @@ def process_data(df):
     st.subheader("Ringkasan Perbandingan Parameter Antar Operator")
     
     # Fungsi untuk membuat tabel perbandingan lokasi terbaik dan terburuk
-    def create_location_comparison(df, parameter, test_type):
+    def create_location_comparison(df, parameter, test_type, comparison_key_suffix):
         if df.empty or parameter not in df['Parameter'].values:
             return None
+        
+        try:
+            df_param = df[df['Parameter'] == parameter].copy()
             
-        df_param = df[df['Parameter'] == parameter].copy()
-        
-        # Buat DataFrame hasil untuk menyimpan nilai tertinggi dan terendah per operator dan lokasi
-        comparison_data = []
-        
-        # Untuk setiap operator
-        for op in [op for op in operator_unik if op in df_param.columns]:
-            op_data = df_param[['Alamat', 'Tanggal_str', 'Latitude', 'Longitude', 'Koordinat', 'Koordinat_DMS', op]].dropna()
+            # Buat DataFrame hasil untuk menyimpan nilai tertinggi dan terendah per operator dan lokasi
+            comparison_data = []
             
-            if not op_data.empty and pd.api.types.is_numeric_dtype(op_data[op]):
-                # Lokasi dengan nilai tertinggi
-                max_idx = op_data[op].idxmax()
-                max_row = op_data.loc[max_idx]
+            # Untuk setiap operator
+            for op in [op for op in operator_unik if op in df_param.columns]:
+                # Konversi ke numerik dengan penanganan error
+                df_param[op] = pd.to_numeric(df_param[op], errors='coerce')
                 
-                # Lokasi dengan nilai terendah
-                min_idx = op_data[op].idxmin()
-                min_row = op_data.loc[min_idx]
+                op_data = df_param[['Alamat', 'Tanggal_str', 'Latitude', 'Longitude', 'Koordinat', 'Koordinat_DMS', op]].dropna()
                 
-                # Pilih format koordinat yang sesuai dengan pilihan pengguna
-                if coordinate_format == "Desimal (DD.DDDDDD)":
-                    coord_highest = max_row['Koordinat']
-                    coord_lowest = min_row['Koordinat']
-                else:
-                    coord_highest = max_row['Koordinat_DMS']
-                    coord_lowest = min_row['Koordinat_DMS']
-                
-                comparison_data.append({
-                    'Operator': op,
-                    'Parameter': parameter,
-                    'Jenis Test': test_type,
-                    'Nilai Tertinggi': max_row[op],
-                    'Lokasi Tertinggi': max_row['Alamat'],
-                    'Koordinat Tertinggi': coord_highest,
-                    'Tanggal Tertinggi': max_row['Tanggal_str'],
-                    'Nilai Terendah': min_row[op],
-                    'Lokasi Terendah': min_row['Alamat'],
-                    'Koordinat Terendah': coord_lowest,
-                    'Tanggal Terendah': min_row['Tanggal_str']
-                })
-        
-        return pd.DataFrame(comparison_data) if comparison_data else None
+                if not op_data.empty:
+                    try:
+                        # Lokasi dengan nilai tertinggi
+                        max_idx = op_data[op].idxmax()
+                        max_row = op_data.loc[max_idx]
+                        
+                        # Lokasi dengan nilai terendah
+                        min_idx = op_data[op].idxmin()
+                        min_row = op_data.loc[min_idx]
+                        
+                        # Pilih format koordinat yang sesuai dengan pilihan pengguna
+                        if coordinate_format == "Desimal (DD.DDDDDD)":
+                            coord_highest = max_row['Koordinat']
+                            coord_lowest = min_row['Koordinat']
+                        else:
+                            coord_highest = max_row['Koordinat_DMS']
+                            coord_lowest = min_row['Koordinat_DMS']
+                        
+                        comparison_data.append({
+                            'Operator': op,
+                            'Parameter': parameter,
+                            'Jenis Test': test_type,
+                            'Nilai Tertinggi': max_row[op],
+                            'Lokasi Tertinggi': max_row['Alamat'],
+                            'Koordinat Tertinggi': coord_highest,
+                            'Tanggal Tertinggi': max_row['Tanggal_str'],
+                            'Nilai Terendah': min_row[op],
+                            'Lokasi Terendah': min_row['Alamat'],
+                            'Koordinat Terendah': coord_lowest,
+                            'Tanggal Terendah': min_row['Tanggal_str']
+                        })
+                    except Exception as e:
+                        st.warning(f"Error saat menganalisis data operator {op}: {str(e)}")
+            
+            return pd.DataFrame(comparison_data) if comparison_data else None
+        except Exception as e:
+            st.error(f"Error saat membuat perbandingan lokasi: {str(e)}")
+            return None
     
     # Buat perbandingan untuk Route Test
     if not df_route_test.empty and parameter_terpilih_route in df_route_test['Parameter'].values:
-        route_comparison = create_location_comparison(df_route_test, parameter_terpilih_route, "Route Test")
+        route_comparison = create_location_comparison(df_route_test, parameter_terpilih_route, "Route Test", "route")
         if route_comparison is not None:
             st.markdown(f"##### Perbandingan {parameter_terpilih_route} (Route Test)")
             st.dataframe(route_comparison)
+        else:
+            st.info(f"Tidak dapat membuat perbandingan untuk {parameter_terpilih_route} (Route Test).")
     
     # Buat perbandingan untuk Static Test
     if not df_static_test.empty and parameter_terpilih_static in df_static_test['Parameter'].values:
-        static_comparison = create_location_comparison(df_static_test, parameter_terpilih_static, "Static Test")
+        static_comparison = create_location_comparison(df_static_test, parameter_terpilih_static, "Static Test", "static")
         if static_comparison is not None:
             st.markdown(f"##### Perbandingan {parameter_terpilih_static} (Static Test)")
             st.dataframe(static_comparison)
+        else:
+            st.info(f"Tidak dapat membuat perbandingan untuk {parameter_terpilih_static} (Static Test).")
 
 # Tambahkan fungsi untuk menyimpan konfigurasi
 def save_config():
@@ -819,13 +885,14 @@ def save_config():
             
         # Dapatkan nilai variabel dari session state atau variabel lokal
         try:
-            bulan_terpilih = st.session_state.get('bulan_terpilih', 'Semua')
-            kabupaten_terpilih = st.session_state.get('kabupaten_terpilih', [])
-            lokasi_terpilih = st.session_state.get('lokasi_terpilih', [])
-            parameter_terpilih_route = st.session_state.get('parameter_terpilih_route', '')
-            parameter_terpilih_static = st.session_state.get('parameter_terpilih_static', '')
-            show_coordinates = st.session_state.get('show_coordinates', True)
-            coordinate_format = st.session_state.get('coordinate_format', "Desimal (DD.DDDDDD)")
+            # Gunakan key yang benar sesuai yang didefinisikan di atas
+            bulan_terpilih = st.session_state.get('month_select_main', 'Semua')
+            kabupaten_terpilih = st.session_state.get('district_multiselect_main', [])
+            lokasi_terpilih = st.session_state.get('location_multiselect_main', [])
+            parameter_terpilih_route = st.session_state.get('route_param_select_sidebar', '')
+            parameter_terpilih_static = st.session_state.get('static_param_select_sidebar', '')
+            show_coordinates = st.session_state.get('show_coords_checkbox_sidebar', True)
+            coordinate_format = st.session_state.get('coord_format_radio_sidebar', "Desimal (DD.DDDDDD)")
             
             # Simpan konfigurasi pilihan saat ini
             st.session_state['configs'][config_name] = {
@@ -854,14 +921,14 @@ def load_config():
             try:
                 config = st.session_state['configs'][selected_config]
                 
-                # Simpan nilai konfigurasi ke session state
-                st.session_state['bulan_terpilih'] = config.get('bulan', 'Semua')
-                st.session_state['kabupaten_terpilih'] = config.get('kabupaten', [])
-                st.session_state['lokasi_terpilih'] = config.get('lokasi', [])
-                st.session_state['parameter_terpilih_route'] = config.get('param_route', '')
-                st.session_state['parameter_terpilih_static'] = config.get('param_static', '')
-                st.session_state['show_coordinates'] = config.get('show_coordinates', True)
-                st.session_state['coordinate_format'] = config.get('coordinate_format', "Desimal (DD.DDDDDD)")
+                # Simpan nilai konfigurasi ke session state dengan key yang benar
+                st.session_state['month_select_main'] = config.get('bulan', 'Semua')
+                st.session_state['district_multiselect_main'] = config.get('kabupaten', [])
+                st.session_state['location_multiselect_main'] = config.get('lokasi', [])
+                st.session_state['route_param_select_sidebar'] = config.get('param_route', '')
+                st.session_state['static_param_select_sidebar'] = config.get('param_static', '')
+                st.session_state['show_coords_checkbox_sidebar'] = config.get('show_coordinates', True)
+                st.session_state['coord_format_radio_sidebar'] = config.get('coordinate_format', "Desimal (DD.DDDDDD)")
                 
                 st.sidebar.success(f"Konfigurasi '{selected_config}' berhasil dimuat!")
                 st.experimental_rerun()
@@ -874,3 +941,26 @@ if __name__ == "__main__":
     # Tambahkan opsi untuk menyimpan dan memuat konfigurasi
     save_config()
     load_config()
+    
+# Tambahkan informasi di bagian bawah
+st.markdown("""
+<div class='highlight'>
+    <h4>Petunjuk Penggunaan:</h4>
+    <ol>
+        <li>Pilih file pada Menu <b>Pilih Spreadsheet</b> untuk memilih file yang ada, kemudian Klik Tombol <b>Muat Data</b></li>
+        <li>klik Menu Filter pada Parameter Route Test maupun Static Test untuk memilih Hasil Pengukurana QoE yang telah dilakukan</li>
+        <li>Lakukan filter pada Menu <b>Pilih Bulan</b> untuk memilih bulan yang di inginkan</li>
+        <li>Lakukan filter pada Menu <b>Pilih Kabupaten/Kota</b> untuk memilih Kabupaten/Kota yang di inginkan</li>
+        <li>Untuk melihat lokasi yang telah dilakukan pengukuran QoE bisa melakukan zoom in / out pada menu <b>Peta</b></li>
+        <li>Untuk data Route Test pada Peta bukan merupakan hasil aktual karena menggunaka data koordinat dari Static test yang berfugnsi untuk menampilkan data pada aplikasi</li>
+        <li>Data Static Test merupakan aktual berdasrkan hasil inputan data dari pengukuran QoE yang telah dilakukan</li>
+    </ol>
+</div>
+""", unsafe_allow_html=True)
+
+# Footer
+st.markdown("""
+<div style='text-align: center; margin-top: 30px; padding: 10px; color: #888;'>
+    <p>© 2025 Aplikasi Visualisasi QoE Kualitas Layanan | Loka Monitor SFR Kendari</p>
+</div>
+""", unsafe_allow_html=True)
