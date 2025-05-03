@@ -952,8 +952,8 @@ st.markdown("""
         <li>Lakukan filter pada Menu <b>Pilih Bulan</b> untuk memilih bulan yang di inginkan</li>
         <li>Lakukan filter pada Menu <b>Pilih Kabupaten/Kota</b> untuk memilih Kabupaten/Kota yang di inginkan</li>
         <li>Untuk melihat lokasi yang telah dilakukan pengukuran QoE bisa melakukan zoom in / out pada menu <b>Peta</b></li>
-        <li>Untuk data Route Test pada Peta bukan merupakan hasil aktual karena menggunaka data koordinat dari Static test yang berfugnsi untuk menampilkan data pada aplikasi</li>
-        <li>Data Static Test merupakan aktual berdasrkan hasil inputan data dari pengukuran QoE yang telah dilakukan</li>
+        <li>Untuk data <b>Route Test</b> pada Peta bukan merupakan hasil aktual karena menggunaka data koordinat dari <b>Static test</b> yang berfugnsi untuk menampilkan data pada aplikasi</li>
+        <li>Data <b>Static Test</b> merupakan aktual berdasarkan hasil inputan data dari pengukuran QoE yang telah dilakukan</li>
     </ol>
 </div>
 """, unsafe_allow_html=True)
@@ -961,6 +961,6 @@ st.markdown("""
 # Footer
 st.markdown("""
 <div style='text-align: center; margin-top: 30px; padding: 10px; color: #888;'>
-    <p>© 2025 Aplikasi Visualisasi QoE Kualitas Layanan | Loka Monitor SFR Kendari</p>
+    <p>© <b>2025 Aplikasi Visualisasi QoE Kualitas Layanan | Loka Monitor SFR Kendari</b></p>
 </div>
 """, unsafe_allow_html=True)
