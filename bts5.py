@@ -16,6 +16,7 @@ st.set_page_config(page_title="QoE SIGMON", page_icon="📊", layout="wide")
 st.markdown(
     """
     <style>
+    
     div.stMultiSelect > label {
         background-color: #e1f5fe !important;
         padding: 5px;
