@@ -953,7 +953,7 @@ st.markdown("""
         <li>Lakukan filter pada Menu <b>Pilih Bulan</b> untuk memilih bulan yang di inginkan</li>
         <li>Lakukan filter pada Menu <b>Pilih Kabupaten/Kota</b> untuk memilih Kabupaten/Kota yang di inginkan</li>
         <li>Untuk melihat lokasi yang telah dilakukan pengukuran QoE bisa melakukan zoom in / out pada menu <b>Peta</b></li>
-        <li>Untuk data <b>Route Test</b> pada Peta bukan merupakan hasil aktual karena menggunaka data koordinat dari <b>Static test</b> yang berfungsi untuk menampilkan data pada aplikasi</li>
+        <li>Untuk data <b>Route Test</b> pada Peta bukan merupakan hasil aktual karena menggunakan data koordinat dari <b>Static test</b> yang berfungsi untuk menampilkan data pada aplikasi</li>
         <li>Data <b>Static Test</b> merupakan aktual berdasarkan hasil inputan data dari pengukuran QoE yang telah dilakukan</li>
     </ol>
 </div>
