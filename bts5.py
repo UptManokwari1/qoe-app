@@ -580,6 +580,8 @@ def process_data(df):
         m = leafmap.Map(center=[center_lat, center_lon], zoom=8)
         # Tambahkan basemap
         m.add_basemap("OpenStreetMap")
+         # Tambahkan satellite basemap
+        m.add_basemap("Satellite")
         
         # Tambahkan control koordinat ke peta
         if show_coordinates:
@@ -760,7 +762,7 @@ def process_data(df):
                             tooltip=f"Static Test: {op} - {row['Alamat']} | {coord_display}"
                         ).add_to(marker_cluster)
        
-        # Tambahkan legenda untuk operator dan jenis pengukuran
+        # Tambahkan legenda untuk operator dan jenis pengukuran (kembali ke desain awal)
         legend_html = """
         <div style="position: fixed; bottom: 50px; right: 50px; z-index: 1000; background-color: white;
                     padding: 10px; border: 2px solid grey; border-radius: 5px">
@@ -887,7 +889,7 @@ def save_config():
         # Dapatkan nilai variabel dari session state atau variabel lokal
         try:
             # Gunakan key yang benar sesuai yang didefinisikan di atas
-            bulan_terpilih = st.session_state.get('month_select_main', 'Semua')
+            bulan_terpilih = st.session_state.get('process_data_month_select_primary', 'Semua')
             kabupaten_terpilih = st.session_state.get('district_multiselect_main', [])
             lokasi_terpilih = st.session_state.get('location_multiselect_main', [])
             parameter_terpilih_route = st.session_state.get('route_param_select_sidebar', '')
@@ -895,7 +897,7 @@ def save_config():
             show_coordinates = st.session_state.get('show_coords_checkbox_sidebar', True)
             coordinate_format = st.session_state.get('coord_format_radio_sidebar', "Desimal (DD.DDDDDD)")
             
-            # Simpan konfigurasi pilihan saat ini
+            # Simpan konfigurasi pilihan saat ini (hapus map_type yang tidak dibutuhkan)
             st.session_state['configs'][config_name] = {
                 'bulan': bulan_terpilih,
                 'kabupaten': kabupaten_terpilih,
@@ -923,7 +925,7 @@ def load_config():
                 config = st.session_state['configs'][selected_config]
                 
                 # Simpan nilai konfigurasi ke session state dengan key yang benar
-                st.session_state['month_select_main'] = config.get('bulan', 'Semua')
+                st.session_state['process_data_month_select_primary'] = config.get('bulan', 'Semua')
                 st.session_state['district_multiselect_main'] = config.get('kabupaten', [])
                 st.session_state['location_multiselect_main'] = config.get('lokasi', [])
                 st.session_state['route_param_select_sidebar'] = config.get('param_route', '')
@@ -953,7 +955,7 @@ st.markdown("""
         <li>Lakukan filter pada Menu <b>Pilih Bulan</b> untuk memilih bulan yang di inginkan</li>
         <li>Lakukan filter pada Menu <b>Pilih Kabupaten/Kota</b> untuk memilih Kabupaten/Kota yang di inginkan</li>
         <li>Untuk melihat lokasi yang telah dilakukan pengukuran QoE bisa melakukan zoom in / out pada menu <b>Peta</b></li>
-        <li>Untuk data <b>Route Test</b> pada Peta bukan merupakan hasil aktual karena menggunakan data koordinat dari <b>Static test</b> yang berfungsi untuk menampilkan data pada aplikasi</li>
+        <li>Untuk data <b>Route Test</b> pada Peta bukan merupakan hasil aktual karena menggunaka data koordinat dari <b>Static test</b> yang berfungsi untuk menampilkan data pada aplikasi</li>
         <li>Data <b>Static Test</b> merupakan aktual berdasarkan hasil inputan data dari pengukuran QoE yang telah dilakukan</li>
     </ol>
 </div>
