@@ -96,6 +96,40 @@ st.markdown(
         font-weight: bold;
         font-family: monospace;
     }
+    /* Style untuk filter lokasi terpisah */
+    .route-test-header {
+        background-color: #e0b0ff;
+        padding: 5px 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        font-weight: bold;
+        color: #000;
+    }
+    
+    .static-test-header {
+        background-color: #ffc04d;
+        padding: 5px 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        font-weight: bold;
+        color: #000;
+    }
+    
+    .filter-container {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .highlight {
+        background-color: #f5f5f5;
+        padding: 15px;
+        border-radius: 5px;
+        border-left: 4px solid #4CAF50;
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -351,9 +385,9 @@ def process_data(df):
             axis=1
         )
     
-    # Filter Bulan - PENTING: Menggunakan key unik yang berbeda dari month_select_process_data
+    # Filter Bulan
     bulan_unik = ['Semua'] + sorted(df['Bulan'].unique().tolist())
-    bulan_terpilih = st.selectbox("Pilih Bulan:", bulan_unik, index=0, key="process_data_month_select_primary")  # Key yang lebih jelas & unik
+    bulan_terpilih = st.selectbox("Pilih Bulan:", bulan_unik, index=0, key="process_data_month_select_primary")
     
     if bulan_terpilih == 'Semua':
         df_filtered = df.copy()
@@ -363,7 +397,7 @@ def process_data(df):
     # Filter Kabupaten/Kota
     if 'Kabupaten/Kota' in df.columns:
         kabupaten_unik = sorted(df_filtered['Kabupaten/Kota'].unique().tolist())
-        kabupaten_terpilih = st.multiselect("Pilih Kabupaten/Kota:", kabupaten_unik, default=kabupaten_unik, key="district_multiselect_main")  # Key lebih spesifik
+        kabupaten_terpilih = st.multiselect("Pilih Kabupaten/Kota:", kabupaten_unik, default=kabupaten_unik, key="district_multiselect_main")
         
         if kabupaten_terpilih:
             df_filtered = df_filtered[df_filtered['Kabupaten/Kota'].isin(kabupaten_terpilih)]
@@ -372,13 +406,46 @@ def process_data(df):
     else:
         st.warning("Kolom 'Kabupaten/Kota' tidak ditemukan dalam data.")
         df_filtered = df_filtered.copy()
-        
-    # Pilih lokasi
-    lokasi_unik = sorted(df_filtered['Alamat'].unique().tolist())
-    lokasi_terpilih = st.multiselect("Pilih Lokasi:", lokasi_unik, default=lokasi_unik, key="location_multiselect_main")  # Key lebih spesifik
-           
+    
+    # Pisahkan data berdasarkan jenis pengukuran
+    df_route_all = df_filtered[df_filtered['Jenis Pengukuran'] == 'Route Test'].copy()
+    df_static_all = df_filtered[df_filtered['Jenis Pengukuran'] == 'Static Test'].copy()
+    
+    # BARU: Tampilkan filter lokasi terpisah untuk Route Test dan Static Test
+    st.subheader("Filter Lokasi")
+    
+    # Buat dua kolom untuk filter lokasi
+    col_lokasi1, col_lokasi2 = st.columns(2)
+    
+    with col_lokasi1:
+        st.markdown('<div class="route-test-header">Route Test</div>', unsafe_allow_html=True)
+        st.markdown('<div class="filter-container">', unsafe_allow_html=True)
+        # Filter lokasi untuk Route Test
+        lokasi_route_unik = sorted(df_route_all['Alamat'].unique().tolist()) if not df_route_all.empty else []
+        lokasi_route_terpilih = st.multiselect(
+            "Pilih Lokasi Route Test:", 
+            lokasi_route_unik, 
+            default=lokasi_route_unik, 
+            key="location_multiselect_route"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col_lokasi2:
+        st.markdown('<div class="static-test-header">Static Test</div>', unsafe_allow_html=True)
+        st.markdown('<div class="filter-container">', unsafe_allow_html=True)
+        # Filter lokasi untuk Static Test
+        lokasi_static_unik = sorted(df_static_all['Alamat'].unique().tolist()) if not df_static_all.empty else []
+        lokasi_static_terpilih = st.multiselect(
+            "Pilih Lokasi Static Test:", 
+            lokasi_static_unik, 
+            default=lokasi_static_unik, 
+            key="location_multiselect_static"
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+    
     # Filter data berdasarkan lokasi yang dipilih
-    df_filtered = df_filtered[df_filtered['Alamat'].isin(lokasi_terpilih)]
+    df_route_test = df_route_all[df_route_all['Alamat'].isin(lokasi_route_terpilih)] if lokasi_route_terpilih else pd.DataFrame()
+    df_static_test = df_static_all[df_static_all['Alamat'].isin(lokasi_static_terpilih)] if lokasi_static_terpilih else pd.DataFrame()
     
     # Operator seluler - pastikan ketiga operator tersedia dalam dataframe
     operator_unik = ['Telkomsel', 'IOH', 'XL Axiata']
@@ -387,32 +454,28 @@ def process_data(df):
     for op in operator_unik:
         if op not in df_filtered.columns:
             st.warning(f"Kolom operator '{op}' tidak ditemukan dalam dataset.")
-   
-    # Pisahkan data berdasarkan jenis pengukuran
-    df_route_test = df_filtered[df_filtered['Jenis Pengukuran'] == 'Route Test']
-    df_static_test = df_filtered[df_filtered['Jenis Pengukuran'] == 'Static Test']
     
     # Parameter untuk Route Test
     st.sidebar.subheader("Parameter Route Test")
     parameter_unik_route = sorted(df_route_test['Parameter'].unique().tolist()) if not df_route_test.empty else []
     parameter_terpilih_route = st.sidebar.selectbox("Pilih Parameter Route Test:", 
                                                   parameter_unik_route if parameter_unik_route else ['Tidak ada data'], 
-                                                  key="route_param_select_sidebar")  # Key lebih spesifik
+                                                  key="route_param_select_sidebar")
     
-   # Parameter untuk Static Test
+    # Parameter untuk Static Test
     st.sidebar.subheader("Parameter Static Test")
     parameter_unik_static = sorted(df_static_test['Parameter'].unique().tolist()) if not df_static_test.empty else []
     parameter_terpilih_static = st.sidebar.selectbox("Pilih Parameter Static Test:", 
                                                    parameter_unik_static if parameter_unik_static else ['Tidak ada data'], 
-                                                   key="static_param_select_sidebar")  # Key lebih spesifik
+                                                   key="static_param_select_sidebar")
     
     # Opsi untuk menampilkan koordinat pada peta
     st.sidebar.subheader("Opsi Peta")
-    show_coordinates = st.sidebar.checkbox("Tampilkan Koordinat pada Peta", value=True, key="show_coords_checkbox_sidebar")  # Key lebih spesifik
+    show_coordinates = st.sidebar.checkbox("Tampilkan Koordinat pada Peta", value=True, key="show_coords_checkbox_sidebar")
     coordinate_format = st.sidebar.radio("Format Koordinat", 
                                        ["Desimal (DD.DDDDDD)", "Derajat-Menit-Detik (DD°MM'SS\")"], 
                                        index=0, 
-                                       key="coord_format_radio_sidebar")  # Key lebih spesifik
+                                       key="coord_format_radio_sidebar")
     
     # Update fungsi format koordinat berdasarkan pilihan pengguna
     def get_coordinate_display(lat, lon):
@@ -891,17 +954,22 @@ def save_config():
             # Gunakan key yang benar sesuai yang didefinisikan di atas
             bulan_terpilih = st.session_state.get('process_data_month_select_primary', 'Semua')
             kabupaten_terpilih = st.session_state.get('district_multiselect_main', [])
-            lokasi_terpilih = st.session_state.get('location_multiselect_main', [])
+            
+            # BARU: Simpan lokasi terpisah untuk Route Test dan Static Test
+            lokasi_route_terpilih = st.session_state.get('location_multiselect_route', [])
+            lokasi_static_terpilih = st.session_state.get('location_multiselect_static', [])
+            
             parameter_terpilih_route = st.session_state.get('route_param_select_sidebar', '')
             parameter_terpilih_static = st.session_state.get('static_param_select_sidebar', '')
             show_coordinates = st.session_state.get('show_coords_checkbox_sidebar', True)
             coordinate_format = st.session_state.get('coord_format_radio_sidebar', "Desimal (DD.DDDDDD)")
             
-            # Simpan konfigurasi pilihan saat ini (hapus map_type yang tidak dibutuhkan)
+            # Simpan konfigurasi pilihan saat ini dengan pemisahan lokasi Route dan Static
             st.session_state['configs'][config_name] = {
                 'bulan': bulan_terpilih,
                 'kabupaten': kabupaten_terpilih,
-                'lokasi': lokasi_terpilih,
+                'lokasi_route': lokasi_route_terpilih,  # Lokasi terpisah untuk Route Test
+                'lokasi_static': lokasi_static_terpilih,  # Lokasi terpisah untuk Static Test
                 'param_route': parameter_terpilih_route,
                 'param_static': parameter_terpilih_static,
                 'show_coordinates': show_coordinates,
@@ -927,7 +995,11 @@ def load_config():
                 # Simpan nilai konfigurasi ke session state dengan key yang benar
                 st.session_state['process_data_month_select_primary'] = config.get('bulan', 'Semua')
                 st.session_state['district_multiselect_main'] = config.get('kabupaten', [])
-                st.session_state['location_multiselect_main'] = config.get('lokasi', [])
+                
+                # BARU: Muat lokasi terpisah untuk Route Test dan Static Test
+                st.session_state['location_multiselect_route'] = config.get('lokasi_route', [])
+                st.session_state['location_multiselect_static'] = config.get('lokasi_static', [])
+                
                 st.session_state['route_param_select_sidebar'] = config.get('param_route', '')
                 st.session_state['static_param_select_sidebar'] = config.get('param_static', '')
                 st.session_state['show_coords_checkbox_sidebar'] = config.get('show_coordinates', True)
@@ -951,9 +1023,10 @@ st.markdown("""
     <h4>Petunjuk Penggunaan:</h4>
     <ol>
         <li>Pilih file pada Menu <b>Pilih Spreadsheet</b> untuk memilih file yang ada, kemudian Klik Tombol <b>Muat Data</b></li>
-        <li>klik Menu Filter pada Parameter Route Test maupun Static Test untuk memilih Hasil Pengukurana QoE yang telah dilakukan</li>
+        <li>Klik Menu Filter pada Parameter Route Test maupun Static Test untuk memilih Hasil Pengukuran QoE yang telah dilakukan</li>
         <li>Lakukan filter pada Menu <b>Pilih Bulan</b> untuk memilih bulan yang di inginkan</li>
         <li>Lakukan filter pada Menu <b>Pilih Kabupaten/Kota</b> untuk memilih Kabupaten/Kota yang di inginkan</li>
+        <li>Gunakan area <b>Filter Lokasi</b> untuk memilih lokasi yang berbeda untuk <b>Route Test</b> dan <b>Static Test</b></li>
         <li>Untuk melihat lokasi yang telah dilakukan pengukuran QoE bisa melakukan zoom in / out pada menu <b>Peta</b></li>
         <li>Untuk data <b>Route Test</b> pada Peta bukan merupakan hasil aktual karena menggunaka data koordinat dari <b>Static test</b> yang berfungsi untuk menampilkan data pada aplikasi</li>
         <li>Data <b>Static Test</b> merupakan aktual berdasarkan hasil inputan data dari pengukuran QoE yang telah dilakukan</li>
